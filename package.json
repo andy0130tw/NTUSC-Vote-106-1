@@ -1,0 +1,23 @@
+{
+  "name": "vote-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "express": "^4.16.2",
+    "iconv-lite": "^0.4.19",
+    "morgan": "^1.9.0",
+    "mysql2": "^1.5.1",
+    "request-debug": "^0.2.0",
+    "request-promise": "^4.2.2",
+    "sequelize": "^4.23.1",
+    "sqlite3": "^3.1.13",
+    "xml2js": "^0.4.19"
+  }
+}
