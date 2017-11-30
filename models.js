@@ -5,6 +5,7 @@ const config = require('./config.json');
 const db = new Seq(config.DB_DATABASE, config.DB_USERNAME, config.DB_PASSWORD, {
     dialect: config.DB_DIALECT,
     host: config.DB_HOSTNAME,
+    port: config.DB_PORT,
     define: {
         // no plural form please
         freezeTableName: true,
@@ -37,6 +38,7 @@ const Ballot = db.define('ballot', {
     uid:       { type: Seq.STRING(24), allowNull: false, unique: true },
     serial:    { type: Seq.INTEGER },
     card_sec:  { type: Seq.TEXT },
+    dept:      { type: Seq.STRING(36) },
     tx:        { type: Seq.STRING(64), allowNull: false, defaultValue: '!' },
     commit:    { type: Seq.BOOLEAN, defaultValue: false }
 });

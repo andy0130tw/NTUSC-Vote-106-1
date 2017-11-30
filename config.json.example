@@ -1,0 +1,14 @@
+{
+    "DB_DIALECT": "mysql",
+    "DB_HOSTNAME": "localhost",
+    "DB_DATABASE": "vote",
+    "DB_USERNAME": "voter",
+    "DB_PASSWORD": "ntusc-vote // sample only!!",
+    "DB_LOGGING": false,
+
+    "FOREIGN_URL": "http://140.112. [...]",
+    "FOREIGN_UID": "sysid",
+    "FOREIGN_PASSWORD": "syspwd",
+
+    "AUTH_SALT": "__fill_in_a_random_string_here__"
+}

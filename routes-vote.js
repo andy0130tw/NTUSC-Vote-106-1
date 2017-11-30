@@ -70,6 +70,9 @@ app.get('/query', requestHook, (req, resp) => {
         return resp.json(ret);
     }
 
+    // normalize the first letter (others are digits)
+    stuid = stuid.toLowerCase();
+
     if (stuid.length != 9 || (!req.query.serial && !bypass_serial)) {
         // stuid should have exact length,
         // and either serial should be given or explicitly bypass it
@@ -91,7 +94,7 @@ app.get('/query', requestHook, (req, resp) => {
                 ret.serial = '0';
                 return Promise.resolve(result);
             }
-            const mat = result.error.match(/.+?:(\d+)/);
+            const mat = result.error.match(/.+:(\d+)/);
             if (mat == null) {
                 // case #2: other type of error; no need to try again
                 ret.serial = null;
@@ -116,11 +119,15 @@ app.get('/query', requestHook, (req, resp) => {
         var isLegitIdent = result.webok && result.incampus;
 
         ret.result = result;
+        // hide sensitive information from error message
+        result.error.replace(/(.+):\d+/, '$1:***');
 
         if (!isLegitIdent) {
             ret.msg = result.error;
             return Promise.resolve(null);
         }
+
+        let recordedSerial = bypass_serial ? null : ret.serial;
 
         // retrieve ballot, check if consistent
         //   if do (or new), generate a new tx
@@ -130,20 +137,21 @@ app.get('/query', requestHook, (req, resp) => {
         return models.Ballot.findOrBuild({
             where: { uid: stuid },
             defaults: {
-                serial: ret.serial,
-                client_id: resp.locals.client.id
+                serial: recordedSerial,
+                client_id: resp.locals.client.id,
+                card_sec: req.query.card_sec
             }
         }).spread((ballot, inited) => {
             if (inited) {
                 // new
-                ballot.card_sec = req.query.card_sec;
                 ballot.tx = tokenUtils.generateTxString();
                 return ballot.save();
             }
 
              // not new, check (1) consistency, (2) commited
-            if (ballot.client_id != resp.locals.client.id) {
-                return Promise.reject('Token is inconsistent');
+            if (ballot.serial != recordedSerial ||
+                ballot.client_id != resp.locals.client.id) {
+                return Promise.reject('Ballot information is inconsistent');
             }
             if (ballot.commit) {
                 return Promise.reject('Already voted, sorry');
@@ -184,8 +192,7 @@ app.post('/commit', requestHook, (req, resp) => {
         if (!ballot) {
             // tx
             ret.msg = 'Tx does not exist or just disappeared, sorry';
-            resp.status(403).json(ret);
-            return Promise.reject();
+            return Promise.reject(null);
         }
         // need refactoring
         return ballot.set('commit', true).save()
@@ -193,7 +200,12 @@ app.post('/commit', requestHook, (req, resp) => {
             ret.ok = true;
             resp.json(ret);
         });
-    }).error(err => {
+    })
+    .catch(null, () => {
+        // do nothing to let everything pass through
+        resp.status(403).json(ret);
+    })
+    .error(err => {
         ret.msg = err.message;
         resp.status(500).json(ret);
     });
