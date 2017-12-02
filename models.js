@@ -38,7 +38,9 @@ const Ballot = db.define('ballot', {
     uid:       { type: Seq.STRING(24), allowNull: false, unique: true },
     serial:    { type: Seq.INTEGER },
     card_sec:  { type: Seq.TEXT },
-    dept:      { type: Seq.STRING(36) },
+    stutype:   { type: Seq.STRING(32) },
+    college:   { type: Seq.STRING(24) },
+    dept:      { type: Seq.STRING(24) },
     tx:        { type: Seq.STRING(64), allowNull: false, defaultValue: '!' },
     commit:    { type: Seq.BOOLEAN, defaultValue: false }
 });

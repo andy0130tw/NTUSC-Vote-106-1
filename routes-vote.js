@@ -57,7 +57,7 @@ app.get('/ping', requestHook, (req, resp) => {
     });
 });
 
-app.get('/query', requestHook, (req, resp) => {
+app.get('/query', requestHook, (req, resp, next) => {
     let ret = resp.locals.ret;
     let stuid = req.query.stuid;
     let bypass_serial = (req.query.bypass_serial == 'true' ||
@@ -119,6 +119,7 @@ app.get('/query', requestHook, (req, resp) => {
         var isLegitIdent = result.webok && result.incampus;
 
         ret.result = result;
+        // TODO: log here
         // hide sensitive information from error message
         result.error.replace(/(.+):\d+/, '$1:***');
 
@@ -139,6 +140,9 @@ app.get('/query', requestHook, (req, resp) => {
             defaults: {
                 serial: recordedSerial,
                 client_id: resp.locals.client.id,
+                stutype: result.stutype,
+                college: result.college,
+                dept: result.dptcode,
                 card_sec: req.query.card_sec
             }
         }).spread((ballot, inited) => {
@@ -168,10 +172,13 @@ app.get('/query', requestHook, (req, resp) => {
         }
         resp.json(ret);
     })
-    .catch(String, errStr => {
+    .catch(err => err instanceof String, errStr => {
         // XXX, WTF String class
         ret.msg = errStr;
         resp.status(400).json(ret);
+    })
+    .catch(err => {
+        next(err);
     });
 });
 
