@@ -10,5 +10,7 @@
     "FOREIGN_UID": "sysid",
     "FOREIGN_PASSWORD": "syspwd",
 
-    "AUTH_SALT": "__fill_in_a_random_string_here__"
+    "AUTH_SALT": "__fill_in_a_random_string_here__",
+
+    "VOTE_ENABLE_OVERRIDE": false
 }

@@ -3,6 +3,7 @@ const express = require('express');
 const foreign = require('./foreign');
 const tokenUtils = require('./utils-token');
 const models = require('./models');
+const config = require('./config.json');
 
 // check for a valid token and infer its corresponding client
 function requestHook(req, resp, next) {
@@ -29,6 +30,13 @@ function requestHook(req, resp, next) {
         resp.locals.client = inst;
         next();
     });
+}
+
+// load overriding data
+let overrideDict = {};
+if (config.VOTE_ENABLE_OVERRIDE) {
+    console.log('Loading overriding data...');
+    overrideDict = require('./meta/region-override.json');
 }
 
 app = new express();
@@ -146,6 +154,13 @@ app.get('/query', requestHook, (req, resp, next) => {
                 card_sec: req.query.card_sec
             }
         }).spread((ballot, inited) => {
+            if (overrideDict.hasOwnProperty(stuid)) {
+                // if found overriding, do override
+                ballot.set('college', overrideDict[stuid]);
+                result.college = overrideDict[stuid];
+                // TODO: log!
+            }
+
             if (inited) {
                 // new
                 ballot.tx = tokenUtils.generateTxString();
