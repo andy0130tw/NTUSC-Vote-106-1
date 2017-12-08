@@ -129,7 +129,7 @@ app.get('/query', requestHook, (req, resp, next) => {
         ret.result = result;
         // TODO: log here
         // hide sensitive information from error message
-        result.error.replace(/(.+):\d+/, '$1:***');
+        result.error = result.error.replace(/(.+?):\d+/, '$1:***');
 
         if (!isLegitIdent) {
             ret.msg = result.error;
