@@ -11,7 +11,9 @@ const db = new Seq(config.DB_DATABASE, config.DB_USERNAME, config.DB_PASSWORD, {
         freezeTableName: true,
         // convert the default column names to `*_by`, `*_id`
         // to be differentiate column names with their decorations
-        underscored: true
+        underscored: true,
+        // use utf-8
+        collate: 'utf8_unicode_ci'
     },
     // to surpress warning
     operatorsAliases: false,
@@ -44,6 +46,15 @@ const Ballot = db.define('ballot', {
     tx:        { type: Seq.STRING(64), allowNull: false, defaultValue: '!' },
     commit:    { type: Seq.BOOLEAN, defaultValue: false }
 });
+
+Log.log = function(level, tag, content, client_id) {
+    return this.create({
+        level: level,
+        tag: tag,
+        content: content,
+        client_id: client_id
+    }, { logging: false });
+};
 
 // Relations
 Log.belongsTo(Client);

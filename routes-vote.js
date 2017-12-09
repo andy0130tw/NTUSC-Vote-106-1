@@ -12,6 +12,11 @@ const l10nMsg = {
     'MISSING_TX': '未提供授權碼'
 };
 
+function logRequest(req, resp, level, content) {
+    const clientId = (resp.locals.client || {}).id || null;
+    return models.Log.log(level, req.route.path, content, clientId);
+}
+
 // check for a valid token and infer its corresponding client
 function requestHook(req, resp, next) {
     const ret = resp.locals.ret = {
@@ -48,6 +53,7 @@ if (config.VOTE_ENABLE_OVERRIDE) {
 
 app = new express();
 
+app.set('x-powered-by', false);
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/ping', requestHook, (req, resp) => {
@@ -92,6 +98,10 @@ app.get('/query', requestHook, (req, resp, next) => {
         // stuid should have exact length,
         // and either serial should be given or explicitly bypass it
         // the behavior of bypassing will be recorded!
+        logRequest(req, resp, 'verbose',
+            `invalid query, stuid [${stuid}], ` +
+            `ser ${req.query.serial}, byp ${bypass_serial}`);
+
         ret.msg = 'Bad request, meow :3';
         resp.status(400);
         return resp.json(ret);
@@ -117,6 +127,7 @@ app.get('/query', requestHook, (req, resp, next) => {
             }
             // case #3: serial number is retrieved from foreign request
             ret.serial = mat[1];
+            logRequest(req, resp, 'debug', `serial bypassing: ${stuid} => ${ret.serial}`);
             return foreign.query(stuid + ret.serial);
         });
     } else {
@@ -134,21 +145,24 @@ app.get('/query', requestHook, (req, resp, next) => {
         var isLegitIdent = result.webok && result.incampus;
 
         ret.result = result;
-        // TODO: log here
+        logRequest(req, resp, 'debug', `recv result ${JSON.stringify(result)}`);
+
         // hide sensitive information from error message
         result.error = result.error.replace(/(.+?):\d+/, '$1:***');
 
         if (!isLegitIdent) {
             ret.msg = result.error;
+            logRequest(req, resp, 'verbose', `is not legitimate: [${stuid}]: ${result.error}`);
             return Promise.resolve(null);
         }
 
+        // if bypass then do not record its serial
         let recordedSerial = bypass_serial ? null : ret.serial;
 
         // retrieve ballot, check if consistent
         //   if do (or new), generate a new tx
         //         (not new and yet commited), leave intact
-        //   if not, reject inconstitent state
+        //   if not, reject inconsistent state
         //   if commited, reject duplicates
         return models.Ballot.findOrBuild({
             where: { uid: stuid },
@@ -177,9 +191,11 @@ app.get('/query', requestHook, (req, resp, next) => {
              // not new, check (1) consistency, (2) commited
             if (ballot.serial != recordedSerial ||
                 ballot.client_id != resp.locals.client.id) {
+                logRequest(req, resp, 'warning', `ballot info inconsistent: ${ballot.uid}`);
                 return Promise.reject(l10nMsg['BALLOT_INFO_INCONSISTENT']);
             }
             if (ballot.commit) {
+                logRequest(req, resp, 'warning', `already voted: ${ballot.uid}`);
                 return Promise.reject(l10nMsg['ALREADY_VOTED']);
             }
 
@@ -204,7 +220,7 @@ app.get('/query', requestHook, (req, resp, next) => {
     });
 });
 
-app.post('/commit', requestHook, (req, resp) => {
+app.post('/commit', requestHook, (req, resp, next) => {
     let ret = resp.locals.ret;
     if (!req.body.tx) {
         ret.msg = l10nMsg['MISSING_TX'];
@@ -221,6 +237,7 @@ app.post('/commit', requestHook, (req, resp) => {
         if (!ballot) {
             // tx
             ret.msg = l10nMsg['TX_NOT_FOUND'];
+            logRequest(req, resp, 'verbose', `tx not found: ${req.body.tx}`);
             return Promise.reject(null);
         }
         // need refactoring
@@ -235,9 +252,27 @@ app.post('/commit', requestHook, (req, resp) => {
         resp.status(403).json(ret);
     })
     .error(err => {
-        ret.msg = err.message;
-        resp.status(500).json(ret);
+        next(err);
     });
+});
+
+app.use((err, req, resp, next) => {
+    errMsg = app.get('debug') ? (err.message || err) : 'Internal server error QQ';
+    models.Log.log('error', 'express-server', err.stack || err);
+
+    let ret = {
+        ok: false,
+        msg: errMsg
+    };
+
+    // XXX: a track code can be added here to help recognizing log entry
+    //      corresponding to client
+
+    if (app.get('debug')) {
+        ret.stacktrace = err.stack;
+    }
+
+    resp.status(500).json(ret);
 });
 
 module.exports = app;

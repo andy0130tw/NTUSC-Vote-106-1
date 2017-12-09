@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const config = require('./config.json');
 
+const BASE58_CHAR_LIST = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
 // pre-launch check
 if (!config.AUTH_SALT) {
     throw new Error('AUTH_SALT is required in config file.');
@@ -16,9 +18,8 @@ function doHash(str) {
 
 function generateTxString() {
     const chars = [];
-    const charList = '0123456789abcdef';
     for (let i = 0; i < 32; i++) {
-        chars.push(charList[Math.floor(Math.random() * 16)]);
+        chars.push(BASE58_CHAR_LIST[Math.floor(Math.random() * 58)]);
     }
     return chars.join('');
 }
