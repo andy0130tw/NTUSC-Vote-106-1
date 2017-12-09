@@ -191,11 +191,11 @@ app.get('/query', requestHook, (req, resp, next) => {
              // not new, check (1) consistency, (2) commited
             if (ballot.serial != recordedSerial ||
                 ballot.client_id != resp.locals.client.id) {
-                logRequest(req, resp, 'warning', `ballot info inconsistent: ${ballot.uid}`);
+                logRequest(req, resp, 'verbose', `ballot info inconsistent: ${ballot.uid}`);
                 return Promise.reject(l10nMsg['BALLOT_INFO_INCONSISTENT']);
             }
             if (ballot.commit) {
-                logRequest(req, resp, 'warning', `already voted: ${ballot.uid}`);
+                logRequest(req, resp, 'verbose', `already voted: ${ballot.uid}`);
                 return Promise.reject(l10nMsg['ALREADY_VOTED']);
             }
 
@@ -210,10 +210,15 @@ app.get('/query', requestHook, (req, resp, next) => {
         }
         resp.json(ret);
     })
-    .catch(err => err instanceof String, errStr => {
+    .catch(err => (typeof err == 'string'), errStr => {
         // XXX, WTF String class
         ret.msg = errStr;
-        resp.status(400).json(ret);
+        resp.status(400).json({
+            ok: false,
+            msg: errStr,
+            can_vote: false
+        });
+        return null;
     })
     .catch(err => {
         next(err);
