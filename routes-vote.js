@@ -230,7 +230,7 @@ app.post('/commit', requestHook, (req, resp) => {
             resp.json(ret);
         });
     })
-    .catch(null, () => {
+    .catch(e => e == null, () => {
         // do nothing to let everything pass through
         resp.status(403).json(ret);
     })
