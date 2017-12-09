@@ -5,6 +5,13 @@ const tokenUtils = require('./utils-token');
 const models = require('./models');
 const config = require('./config.json');
 
+const l10nMsg = {
+    'BALLOT_INFO_INCONSISTENT': '身份驗證方式衝突',
+    'ALREADY_VOTED': '此人已經投過票',
+    'TX_NOT_FOUND': '授權碼不存在或已使用過',
+    'MISSING_TX': '未提供授權碼'
+};
+
 // check for a valid token and infer its corresponding client
 function requestHook(req, resp, next) {
     const ret = resp.locals.ret = {
@@ -170,10 +177,10 @@ app.get('/query', requestHook, (req, resp, next) => {
              // not new, check (1) consistency, (2) commited
             if (ballot.serial != recordedSerial ||
                 ballot.client_id != resp.locals.client.id) {
-                return Promise.reject('Ballot information is inconsistent');
+                return Promise.reject(l10nMsg['BALLOT_INFO_INCONSISTENT']);
             }
             if (ballot.commit) {
-                return Promise.reject('Already voted, sorry');
+                return Promise.reject(l10nMsg['ALREADY_VOTED']);
             }
 
             return Promise.resolve(ballot);
@@ -200,7 +207,7 @@ app.get('/query', requestHook, (req, resp, next) => {
 app.post('/commit', requestHook, (req, resp) => {
     let ret = resp.locals.ret;
     if (!req.body.tx) {
-        ret.msg = 'no tx';
+        ret.msg = l10nMsg['MISSING_TX'];
         return resp.status(400).json(ret);
     }
 
@@ -213,7 +220,7 @@ app.post('/commit', requestHook, (req, resp) => {
     }).then(ballot => {
         if (!ballot) {
             // tx
-            ret.msg = 'Tx does not exist or just disappeared, sorry';
+            ret.msg = l10nMsg['TX_NOT_FOUND'];
             return Promise.reject(null);
         }
         // need refactoring
