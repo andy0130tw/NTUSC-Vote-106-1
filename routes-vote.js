@@ -17,6 +17,16 @@ function logRequest(req, resp, level, content) {
     return models.Log.log(level, req.route.path, content, clientId);
 }
 
+/* Pass on the error in a Express route handler.
+ * it may be concatenated at the end of Promise that should eventually respond to the request.
+ * if a rejection happens and is only caught by Bluebird,
+ * the response will not be returned, resulting a timeout.
+ * the handler emits a 500 instead.
+ */
+function promiseErrorHandler(next) {
+    return err => next(err);
+}
+
 // check for a valid token and infer its corresponding client
 function requestHook(req, resp, next) {
     const ret = resp.locals.ret = {
@@ -54,6 +64,7 @@ if (config.VOTE_ENABLE_OVERRIDE) {
 app = new express();
 
 app.set('x-powered-by', false);
+app.use(require('body-parser').text());
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/ping', requestHook, (req, resp) => {
@@ -220,9 +231,7 @@ app.get('/query', requestHook, (req, resp, next) => {
         });
         return null;
     })
-    .catch(err => {
-        next(err);
-    });
+    .catch(promiseErrorHandler(next));
 });
 
 app.post('/commit', requestHook, (req, resp, next) => {
@@ -256,9 +265,25 @@ app.post('/commit', requestHook, (req, resp, next) => {
         // do nothing to let everything pass through
         resp.status(403).json(ret);
     })
-    .error(err => {
-        next(err);
-    });
+    .error(promiseErrorHandler(next));
+});
+
+app.post('/log', requestHook, (req, resp, next) => {
+    let ret = resp.locals.ret;
+    if (typeof req.body != 'string') {
+        ret.msg = 'Unsupported media type';
+        return resp.status(415).json(ret);
+    }
+    let lines = req.body.split('\n');
+    models.Log.create({
+        level: 'info',
+        tag: 'client-log',
+        content: req.body,
+        client_id: resp.locals.client.id
+    }).then(logObj => {
+        ret.recv_lines = lines.length;
+        resp.json(ret);
+    }).catch(promiseErrorHandler(next));
 });
 
 app.use((err, req, resp, next) => {
