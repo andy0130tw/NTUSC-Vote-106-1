@@ -78,7 +78,11 @@ app.get('/ping', requestHook, (req, resp) => {
         resp.json({
             ok: true,
             msg: null,
-            client: client
+            client: {
+                id: client.id,
+                name: client.name,
+                comment: client.comment
+            }
         });
     })
     .catch(err => {
