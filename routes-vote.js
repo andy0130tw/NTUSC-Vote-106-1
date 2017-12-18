@@ -72,6 +72,7 @@ app.get('/ping', requestHook, (req, resp) => {
     .set({ last_ping: models.db.fn('NOW', 3) })
     .save({ silent: true })
     .then(client => {
+        logRequest(req, resp, 'verbose', `ping`);
         return client.reload();
     })
     .then(client => {
