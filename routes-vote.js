@@ -203,15 +203,15 @@ app.get('/query', requestHook, (req, resp, next) => {
                 return ballot.save();
             }
 
-             // not new, check (1) consistency, (2) commited
+             // not new, check (1) commited, (2) consistency
+            if (ballot.commit) {
+                logRequest(req, resp, 'verbose', `already voted: ${ballot.uid}`);
+                return Promise.reject(l10nMsg['ALREADY_VOTED']);
+            }
             if (ballot.serial != recordedSerial ||
                 ballot.client_id != resp.locals.client.id) {
                 logRequest(req, resp, 'verbose', `ballot info inconsistent: ${ballot.uid}`);
                 return Promise.reject(l10nMsg['BALLOT_INFO_INCONSISTENT']);
-            }
-            if (ballot.commit) {
-                logRequest(req, resp, 'verbose', `already voted: ${ballot.uid}`);
-                return Promise.reject(l10nMsg['ALREADY_VOTED']);
             }
 
             return Promise.resolve(ballot);
